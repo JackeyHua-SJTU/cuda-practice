@@ -1,13 +1,12 @@
 #include <iostream>
 
-static constexpr int SIZE = 256;
+static constexpr int SIZE = 300 * 1024;
 
 __global__ void simple_add(int *a, int *b, int *c) {
-    int x = blockIdx.x;
-    int y = blockIdx.y;
-    int index = y * gridDim.x + x;
-    if (index < SIZE) {
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    while (index < SIZE) {
         c[index] = a[index] + b[index];
+        index += blockDim.x * gridDim.x;
     }
 }
 
@@ -37,15 +36,18 @@ int main() {
     cudaMemcpy(var_a, a, SIZE * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(var_b, b, SIZE * sizeof(int), cudaMemcpyHostToDevice);
     cudaMalloc((void **)&dev_p, SIZE * sizeof(int));
-    dim3 grid(16, 16);  // 多维度必须这么写
-    simple_add<<<grid, 1>>>(var_a, var_b, dev_p);
+    // dim3 grid((SIZE + 15) / 16, 16);  // 多维度必须这么写
+    simple_add<<<128, 128>>>(var_a, var_b, dev_p);
     cudaMemcpy(result, dev_p, SIZE * sizeof(int), cudaMemcpyDeviceToHost);
     cudaFree(dev_p);
     cudaFree(var_a);
     cudaFree(var_b);
     for (int i = 0; i < SIZE; ++i) {
-        printf("answer[%d] is %d\n", i, result[i]);
+        if (a[i] + b[i] != result[i]) {
+            printf("Error Calc result\n");
+            exit(1);
+        }
     }
-
+    printf("Every calc result is correct!\n");
     return 0;
 }
