@@ -3,7 +3,7 @@
 
 /** @brief get the histogram of a char array */
 
-static constexpr int SIZE = 20 * 1024;
+static constexpr int SIZE = 1024 * 1024;
 static constexpr int RANGE = 256;
 
 __global__ void atomic_add_kernel(int *cnt, unsigned char *array) {
@@ -57,8 +57,8 @@ int main() {
     cudaMemcpy(dev_array, array, SIZE * sizeof(unsigned char), cudaMemcpyHostToDevice);
     cudaMemset(dev_cnt, 0, RANGE * sizeof(int));
 
-    atomic_add_kernel<<<16, 256>>>(dev_cnt, dev_array);
-    // atomic_add_with_shared_buffer_kernel<<<16, 256>>>(dev_cnt, dev_array);
+    // atomic_add_kernel<<<16, 256>>>(dev_cnt, dev_array);
+    atomic_add_with_shared_buffer_kernel<<<16, 256>>>(dev_cnt, dev_array);
 
     cudaMemcpy(cnt, dev_cnt, RANGE * sizeof(int), cudaMemcpyDeviceToHost);
 
