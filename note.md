@@ -40,6 +40,12 @@ And we group every consecutive 32 threads into a warp from the very beginning.
 
 Some warps can be executed in parallel based on the number of warp scheduler. In other cases, warps are executed concurrently. They are dispatched based on clock cycle.
 
+
+## Performance
+Loop Unrolling. See [example](./block_reduce.cu).
+- Because every for loop needs a condition judgement each iteration. We spend too much time on useless condition judgement. One way to remedy is to unroll the loop when the round is small and fixed, and do more work in one iteration. The keyword is `#pragma unroll`.
+
+
 ## Quick note
 
 Never call `__syncthreads()` in a branch, because it is synced via counter. So it will be blocked if it is put inside a `if` branch.

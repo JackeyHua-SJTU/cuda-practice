@@ -23,12 +23,13 @@ __global__ void slow_kernel(int *arr, int *ans) {
     int temp = 0;
     // first accumulate different grid group
     // This is to handle arbitrary long array
-    while (x < SIZE) {
+    // #pragma unroll
+    for (; x < SIZE; x += stride) {
         temp += arr[x];
-        x += stride; 
     }
     arr[base_index] = temp;
     __syncthreads();
+    #pragma unroll
     for (int gap = 1; gap <= thread_per_block / 2; gap *= 2) {
         // The target of every thread is base_index
         // Some will pass and some will pause
@@ -49,12 +50,13 @@ __global__ void fast_kernel(int *arr, int *ans) {
     int stride = blockDim.x * gridDim.x;
     int temp = 0;
     // first accumulate different grid group
-    while (x < SIZE) {
+    // #pragma unroll
+    for (; x < SIZE; x += stride) {
         temp += arr[x];
-        x += stride;
     }
     arr[base_index] = temp;
     __syncthreads();
+    #pragma unroll
     for (int gap = 1; gap <= thread_per_block / 2; gap *= 2) {
         int index = 2 * gap * threadIdx.x;
         // The target of every thread is index
