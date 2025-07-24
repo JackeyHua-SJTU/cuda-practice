@@ -21,6 +21,25 @@ But inside one engine, it is executed sequentially.
 So from the side of hardwares, the CUDA driver will first dispatch the operations to each engine, following the launched order.
 And it will handle dependency. If there is no dependency, then parallel execution. Otherwise, we may manually wait for prereq to finish.
 
+## Warp Divergence
+When branch is encountered, threads INSIDE a warp may go into different clause, e.g. if-else, **if**. Since all threads inside a warp must execute the same code, so stall will be inserted when executing the clause that does not correspond to the thread context. However, if all threads inside a warp fall into the same clause, no stall will be inserted.
+
+> How to optimize?
+
+Aggregate active threads. See [example](./block_reduce.cu).
+- In slower case, only partial threads of a warp are active, 
+which means the active threads are distributed to a wider range of warps.
+- In faster case, active threads are assembled in a few warps, so these warps are more efficient and other _idle_ warps just wait.
+
+> How thread is mapped to a warp?
+
+We have block dim `(x, y, z)`, kinda like `array[z][y][x]`, and we can map the 3 dimention array into a one dimention array.
+And we group every consecutive 32 threads into a warp from the very beginning.
+
+> How warp is executed on a SM?
+
+Some warps can be executed in parallel based on the number of warp scheduler. In other cases, warps are executed concurrently. They are dispatched based on clock cycle.
+
 ## Quick note
 
 Never call `__syncthreads()` in a branch, because it is synced via counter. So it will be blocked if it is put inside a `if` branch.
