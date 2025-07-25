@@ -30,7 +30,7 @@ __global__ void slow_kernel(int *arr, int *ans) {
     arr[base_index] = temp;
     __syncthreads();
     #pragma unroll
-    for (int gap = 1; gap <= thread_per_block / 2; gap *= 2) {
+    for (int gap = 1; gap <= blockDim.x / 2; gap *= 2) {
         // The target of every thread is base_index
         // Some will pass and some will pause
         if (base_index % (2 * gap) == 0) {
@@ -57,7 +57,7 @@ __global__ void fast_kernel(int *arr, int *ans) {
     arr[base_index] = temp;
     __syncthreads();
     #pragma unroll
-    for (int gap = 1; gap <= thread_per_block / 2; gap *= 2) {
+    for (int gap = 1; gap <= blockDim.x / 2; gap *= 2) {
         int index = 2 * gap * threadIdx.x;
         // The target of every thread is index
         // Unless it exceeds the upper bound, we can assure that 
@@ -86,7 +86,7 @@ __global__ void slow_kernel_shared(int *arr, int *ans) {
     }
     temp_arr[threadIdx.x] = temp;
     __syncthreads();
-    for (int gap = 1; gap <= thread_per_block / 2; gap *= 2) {
+    for (int gap = 1; gap <= blockDim.x / 2; gap *= 2) {
         // The target of every thread is base_index
         // Some will pass and some will pause
         if (base_index % (2 * gap) == 0) {
@@ -112,7 +112,7 @@ __global__ void fast_kernel_shared(int *arr, int *ans) {
     }
     temp_arr[threadIdx.x] = temp;
     __syncthreads();
-    for (int gap = 1; gap <= thread_per_block / 2; gap *= 2) {
+    for (int gap = 1; gap <= blockDim.x / 2; gap *= 2) {
         int index = 2 * gap * threadIdx.x;
         // The target of every thread is index
         // Unless it exceeds the upper bound, we can assure that 
@@ -124,6 +124,27 @@ __global__ void fast_kernel_shared(int *arr, int *ans) {
     }
     if (threadIdx.x == 0) {
         ans[blockIdx.x] = temp_arr[0];
+    }
+}
+
+__global__ void shuffle(int *arr, int *ans) {
+    int base_index = threadIdx.x + blockIdx.x * blockDim.x;
+    int x = base_index;
+    int stride = blockDim.x * gridDim.x;
+    int temp = 0;
+    // first accumulate different grid group
+    while (x < SIZE) {
+        temp += arr[x];
+        x += stride;
+    }
+    __syncthreads();
+    for (int gap = blockDim.x / 2; gap >= 1; gap /= 2) {
+        temp += __shfl_xor_sync(0xffffffff, temp, gap);
+        __syncthreads();
+    }
+    
+    if (threadIdx.x == 0) {
+        ans[blockIdx.x] = temp;
     }
 }
 
@@ -156,10 +177,9 @@ int main() {
     cudaEventElapsedTime(&elapsed_time, start, end);
     printf("Slower kernel takes %.3f ms\n", elapsed_time);
 
-
     cudaMemset(dev_per_block, 0, blocknum * sizeof(int));
     cudaEventRecord(start);
-    fast_kernel<<<blocknum, 128>>>(dev_a, dev_per_block);
+    fast_kernel<<<blocknum, thread_per_block>>>(dev_a, dev_per_block);
     cudaEventRecord(end);
     cudaEventSynchronize(end);
     cudaEventElapsedTime(&elapsed_time, start, end);
@@ -173,14 +193,21 @@ int main() {
     cudaEventElapsedTime(&elapsed_time, start, end);
     printf("Slower kernel with shared memory takes %.3f ms\n", elapsed_time);
 
-
     cudaMemset(dev_per_block, 0, blocknum * sizeof(int));
     cudaEventRecord(start);
-    fast_kernel_shared<<<blocknum, 128>>>(dev_a, dev_per_block);
+    fast_kernel_shared<<<blocknum, thread_per_block>>>(dev_a, dev_per_block);
     cudaEventRecord(end);
     cudaEventSynchronize(end);
     cudaEventElapsedTime(&elapsed_time, start, end);
     printf("Faster kernel with shared memory takes %.3f ms\n", elapsed_time);
+
+    cudaMemset(dev_per_block, 0, blocknum * sizeof(int));
+    cudaEventRecord(start);
+    shuffle<<<blocknum, thread_per_block>>>(dev_a, dev_per_block);
+    cudaEventRecord(end);
+    cudaEventSynchronize(end);
+    cudaEventElapsedTime(&elapsed_time, start, end);
+    printf("Shuffle kernel takes %.3f ms\n", elapsed_time);
 
     free(a);
     free(per_block);

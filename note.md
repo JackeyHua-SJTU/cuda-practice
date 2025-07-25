@@ -17,6 +17,8 @@ This section introduces the layout of GPU memory hierachy.
 - Register. Fastest and small. It is automatically used by variable defined in the kernel function. If the register has been used up, then it will use the local memory. It is owned by a thread.
 - Local memory. Just a part of global memory. It is used to store the data that exceeds the ability of registers. Slow but private to a thread.
 - Shared memory. Just a part of memory on SM. It is private to a thread block. Use `__shared__` to manual allocate on shared memory.
+    - **Bank Conflict**. Think of the shared memory as a one-dimentional array, and all `index % 32` will be mapped to the same bank. If there are multiple visit to the same bank, then we need to do it one by one. Latency! 
+    - If all warps visit the exact same address, then will broadcast.
 - Global memory. Slow but large. Can be accessed by all threads on GPU. Only two explicit ways to allocate on global memory.
     - On the host side, use `cudaMalloc` to allocate a dynamic global variable. Need manually free the resource by `cudaFree`.
     - On the kernel side, use `__device__` to define a global variable. Since it is global, then we can not have multiple same-name global variable. And in other files, we need to use `extern` to declare it.
@@ -70,7 +72,12 @@ Some warps can be executed in parallel based on the number of warp scheduler. In
 Loop Unrolling. See [example](./block_reduce.cu).
 - Because every for loop needs a condition judgement each iteration. We spend too much time on useless condition judgement. One way to remedy is to unroll the loop when the round is small and fixed, and do more work in one iteration. The keyword is `#pragma unroll`.
 
-
+## Warp Shuffle
+Thread(register) level data fetching.
+- `__shfl_down_sync(mask, var, delta, width=32)`, if it is called at lane id `x`, then it will return the value of variable `var` at lane id `x + delta`. The last `delta` lane will hold its previous value.
+- `__shfl_up_sync(mask, var, delta, width=32)`, if it is called at lane id `x`, then it will return the value of variable `var` at lane id `x - delta`. The first `delta` lane will hold its previous value.
+- `__shfl_xor_sync(mask, var, laneMask, width=32)`, if it is called at lane id `x`, then it will return the value of variable `var` at lane id `x ^ laneMask`. Usually it is used to swap consecutive number (laneMask = 1), and reduction operation.
+- `__shfl_sync(mask, var, srcLane, width=32)` returns the value of variable `var` at lane id `srcLane` to every active lane specified by `mask`.
 ## Quick note
 
 Never call `__syncthreads()` in a branch, because it is synced via counter. So it will be blocked if it is put inside a `if` branch.
@@ -78,7 +85,3 @@ Never call `__syncthreads()` in a branch, because it is synced via counter. So i
 `cudaEventRecord`, think of it as a instruction that record time. It is inserted into instruction queue, and only when GPU has finished all instructions before this one will the timestamp be recorded.
 
 Warp and Engine. As we know, GPU has a kernel engine, and it is comprised of SMs. On each SM, there are several warps that are executing or waiting. Computing resources are on each SM. Kernel engine is a concept from macro view point. Warp is a much micro level concept.
-
-# TODO
-- `__shfl_down_sync`
-- bank conflict
