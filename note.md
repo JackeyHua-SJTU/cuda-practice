@@ -1,3 +1,5 @@
+[Official CUDA C++ Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html)
+
 ## Keyword
 `__shared__` can only be inside `__global__` or `__device__` function. It is shared within a thread block.
 
@@ -8,6 +10,29 @@
 `__global__` is used for kernel function entry. It is run on GPU.
 
 `__host__` can only be run on CPU, and it is the default level of any functions/variables. It is usually used together with `__host__ __device__`.
+
+
+## Memory Layout
+This section introduces the layout of GPU memory hierachy.
+- Register. Fastest and small. It is automatically used by variable defined in the kernel function. If the register has been used up, then it will use the local memory. It is owned by a thread.
+- Local memory. Just a part of global memory. It is used to store the data that exceeds the ability of registers. Slow but private to a thread.
+- Shared memory. Just a part of memory on SM. It is private to a thread block. Use `__shared__` to manual allocate on shared memory.
+- Global memory. Slow but large. Can be accessed by all threads on GPU. Only two explicit ways to allocate on global memory.
+    - On the host side, use `cudaMalloc` to allocate a dynamic global variable. Need manually free the resource by `cudaFree`.
+    - On the kernel side, use `__device__` to define a global variable. Since it is global, then we can not have multiple same-name global variable. And in other files, we need to use `extern` to declare it.
+    ```C++
+    __device__ int var;
+
+    int main() {
+        int a = 1;
+        cudaMemcpySymbol(var, &a, sizeof(a), 0, cudaMemcpyHostToDevice);
+    }
+    ```
+
+- Constant memory. Pretty like global memory, it is defined in global region of a kernel file. Can be accessed by all threads on GPU. It is slow and not that large. Every SM has a constant cache, which is really fast.
+
+- Every SM has its own L1 and constant cache. SMs share the same L2 cache.
+
 
 ## CUDA Stream
 > Key concept in accelerating performance.
@@ -51,6 +76,8 @@ Loop Unrolling. See [example](./block_reduce.cu).
 Never call `__syncthreads()` in a branch, because it is synced via counter. So it will be blocked if it is put inside a `if` branch.
 
 `cudaEventRecord`, think of it as a instruction that record time. It is inserted into instruction queue, and only when GPU has finished all instructions before this one will the timestamp be recorded.
+
+Warp and Engine. As we know, GPU has a kernel engine, and it is comprised of SMs. On each SM, there are several warps that are executing or waiting. Computing resources are on each SM. Kernel engine is a concept from macro view point. Warp is a much micro level concept.
 
 # TODO
 - `__shfl_down_sync`
