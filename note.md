@@ -85,3 +85,9 @@ Never call `__syncthreads()` in a branch, because it is synced via counter. So i
 `cudaEventRecord`, think of it as a instruction that record time. It is inserted into instruction queue, and only when GPU has finished all instructions before this one will the timestamp be recorded.
 
 Warp and Engine. As we know, GPU has a kernel engine, and it is comprised of SMs. On each SM, there are several warps that are executing or waiting. Computing resources are on each SM. Kernel engine is a concept from macro view point. Warp is a much micro level concept.
+
+> How threads map to grid and block dim?
+
+Think of the threads as a 1d array `arr`. Denote `n` to be # of threads inside a block. Then we first divide the `arr` every `n` threads. Reshape every segment into grid dim. Inside a segment, reshape the threads into block dim.
+
+**X/Y axis of threadIdx is different from row/column of array.**
