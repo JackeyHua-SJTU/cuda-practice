@@ -74,7 +74,7 @@ __global__ void elementwise_add_f16(half *a, half *b, half *res, int N) {
  *  Block(256 / 2, 1, 1)
  *  Half precision
  */
-__global__ void elementwise_add_f16_2(float *a, float *b, float *res, int N) {
+__global__ void elementwise_add_f16_2(half *a, half *b, half *res, int N) {
     int idx = 2 * (blockIdx.x * blockDim.x + threadIdx.x);
     if (idx < N) {
         half2 var_a = HALF2(a[idx]);
@@ -106,7 +106,7 @@ __global__ void elementwise_add_f16_2(float *a, float *b, float *res, int N) {
  *  We can not assign a float4 to a half2, either reinterpret_cast, 
  *  or just read a half2 one time.
  */
-__global__ void elementwise_add_f16_8(float *a, float *b, float *res, int N) {
+__global__ void elementwise_add_f16_8(half *a, half *b, half *res, int N) {
     int idx = 8 * (blockIdx.x * blockDim.x + threadIdx.x);
     if (idx < N) {
         half2 var_a_x = HALF2(a[idx]);
@@ -146,10 +146,10 @@ __global__ void elementwise_add_f16_8(float *a, float *b, float *res, int N) {
  *  Grid (ceil(N / 256), 1, 1)
  *  Block(256 / 8, 1, 1)
  */
-__global__ void elementwise_add_f16_8_pack(float *a, float *b, float *res, int N) {
+__global__ void elementwise_add_f16_8_pack(half *a, half *b, half *res, int N) {
     int idx = 8 * (blockIdx.x * blockDim.x + threadIdx.x);
     if (idx < N) {
-        half reg_a[8], reg_b[8], reg_res[8];
+        half reg_a[8], reg_b[8], reg_res[8];    // IMPORTANT, easy for loop unrolling
         FLOAT4(reg_a[0]) = FLOAT4(a[idx]);
         FLOAT4(reg_b[0]) = FLOAT4(b[idx]);
 
