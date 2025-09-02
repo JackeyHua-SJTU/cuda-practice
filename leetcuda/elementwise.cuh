@@ -20,7 +20,7 @@
  * @note pack is to pack multiple basic type into bigger one
  *       for example, float (32 bits) -> float4
  *                    half (16 bits) -> half2
- *       So more bandwidth is used in one memory visit, major reason.
+ *       Fewer instructions on the same memory visit target -> faster.
  *       Also there are SIMD instructions for faster computation.
  */
 
