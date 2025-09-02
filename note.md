@@ -1,5 +1,16 @@
 [Official CUDA C++ Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html)
 
+## Structure
+User perpective:
+- Grid, which is comprised of blocks. Its dimention is configured by `<<<grid dim, block dim>>>`.
+- Block, which is comprised of threads. Its dimention is configured by `<<<grid dim, block dim>>>`.
+- Thread. Lowest level.
+
+GPU perspective:
+- SM, Streaming Multiprocessor. One block will only be assigned to a particular SM. But one SM can hold more than one block.
+- Warp. Minimum scheduling unit, contains 32 threads in common. SIMT style of execution.
+
+
 ## Keyword
 `__shared__` can only be inside `__global__` or `__device__` function. It is shared within a thread block.
 
